@@ -999,6 +999,7 @@ const TAD_DIVISI = new Set([
         let tBiayaIDR=0, tE=0, tLead=0, tDur=0, tSLA=0, cLead=0, cDur=0, cSLA=0;
         const modaCounts = {}, modaKg = {};
         const proyekMap = {}, proyekDivisi = {};
+        const divCounts = {};
 
         data.forEach(d => {
             tBiayaIDR += Number(d.BiayaIDR||0);
@@ -1013,6 +1014,9 @@ const TAD_DIVISI = new Set([
                 modaCounts[m] = (modaCounts[m]||0) + 1;
                 modaKg[m]     = (modaKg[m]||0) + Number(d.Emisi||0)/2;
             });
+
+            // Divisi
+            if (d.Divisi) divCounts[d.Divisi] = (divCounts[d.Divisi]||0) + 1;
 
             // Proyek
             const proj = (d.Tujuan||'').trim();
@@ -1040,6 +1044,11 @@ const TAD_DIVISI = new Set([
             }))
             .sort((a,b) => b.kg - a.kg);
 
+        const topDivisi = Object.entries(divCounts)
+            .sort((a,b) => b[1]-a[1])
+            .slice(0,10)
+            .map(([nama,trip]) => ({nama, trip}));
+
         return {
             n,
             tBiayaIDR: Math.round(tBiayaIDR/1e6*10)/10,
@@ -1051,7 +1060,8 @@ const TAD_DIVISI = new Set([
             tujuanList: data.map(d=>d.Tujuan).filter(Boolean).slice(0,100),
             topProyek,
             allProyek: allProyekArr,
-            modaData
+            modaData,
+            topDivisi
         };
     }
 
@@ -1551,7 +1561,7 @@ const TAD_DIVISI = new Set([
                     proyek: (parsed.proyekList||[]).map(p=>p.nama).join(', '),
                     emisi: parsed.sustPara
                 };
-                renderNarasiCards_Dashboard(parsed);
+                renderNarasiCards_Dashboard(parsed, payload);
             })
             .catch(function(e) {
                 const isOverload = e.message && (e.message.includes('529') || e.message.includes('Timeout'));
@@ -1560,6 +1570,9 @@ const TAD_DIVISI = new Set([
                     : '&#9888; Gagal memuat narasi: ' + e.message;
                 const loading = document.getElementById('narasi-loading');
                 if (loading) loading.innerHTML = '<div style="color:#dc2626;font-size:12px;padding:8px;font-weight:600;">' + msg + '</div>';
+                const umumEl = document.getElementById('narasi-umum');
+                if (umumEl) umumEl.innerHTML = '<div style="color:#dc2626;font-size:12px;padding:8px;font-weight:600;">' + msg + '</div>';
+                setNarasiLoading(false);
             });
     }
 
@@ -1580,18 +1593,9 @@ const TAD_DIVISI = new Set([
         });
     }
 
-    function renderNarasiCards_Dashboard(parsed) {
-        const loading = document.getElementById('narasi-loading');
-        const el      = document.getElementById('narasi-content');
-        if (!loading || !el) return;
+    function renderNarasiCards_Dashboard(parsed, payload) {
+        const { umum_html, proj_html, moda_html, sust_html } = renderNarasiCards(parsed, payload);
 
-        const { umum_html, proj_html, moda_html, sust_html } = renderNarasiCards(parsed);
-
-        // 3 kolom sejajar untuk dashboard
-        const narasisEl = document.getElementById('narasi-cols');
-        if (narasisEl) {
-            const cols = narasisEl.querySelectorAll('[id^="narasi-"]');
-        }
         const umumEl  = document.getElementById('narasi-umum');
         const proyekEl = document.getElementById('narasi-proyek');
         const emisiEl = document.getElementById('narasi-emisi');
@@ -1599,8 +1603,10 @@ const TAD_DIVISI = new Set([
         if (proyekEl) proyekEl.innerHTML = proj_html;
         if (emisiEl) emisiEl.innerHTML = sust_html + moda_html;
 
-        loading.style.display = 'none';
-        // Tampilkan section narasi
+        const loading = document.getElementById('narasi-loading');
+        if (loading) loading.style.display = 'none';
+        const el = document.getElementById('narasi-content');
+        if (el) el.style.display = 'block';
         const section = document.getElementById('narasi-ai-section');
         if (section) section.style.display = 'block';
         setNarasiLoading(false);

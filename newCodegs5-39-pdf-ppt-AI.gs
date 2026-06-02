@@ -312,6 +312,7 @@ function generateNarasiAI(payload) {
   var topProyek = payload.topProyek || [];
   var allProyek = payload.allProyek || [];
   var modaData  = payload.modaData  || [];
+  var topDivisi = payload.topDivisi || [];
 
   // Format data untuk prompt
   var topProyekStr = topProyek.map(function(p, i) {
@@ -326,6 +327,10 @@ function generateNarasiAI(payload) {
     return '- ' + m.nama + ': ' + m.kg + ' kg CO2 (' + m.pct + '%, ' + m.times + ' kali)';
   }).join('\n');
 
+  var topDivisiStr = topDivisi.map(function(d, i) {
+    return (i + 1) + '. ' + d.nama + ' (' + d.trip + ' trip)';
+  }).join('\n');
+
   var prompt =
     'Anda adalah asisten pelaporan PT. Penjaminan Infrastruktur Indonesia (PT PII Persero).\n' +
     'Buat laporan faktual, singkat, tanpa menilai kinerja.\n\n' +
@@ -338,6 +343,8 @@ function generateNarasiAI(payload) {
     '- SLA approve rata-rata: ' + avgSLA + ' jam\n' +
     '- Total emisi: ' + tE + ' kg CO2\n\n' +
 
+    'DIVISI DENGAN PERJALANAN TERBANYAK:\n' + topDivisiStr + '\n\n' +
+
     '3 TUJUAN PERJALANAN TERBANYAK:\n' + topProyekStr + '\n\n' +
     'SEMUA TUJUAN PERJALANAN:\n' + allProyekStr + '\n\n' +
     'DATA MODA TRANSPORTASI:\n' + modaStr + '\n\n' +
@@ -345,7 +352,7 @@ function generateNarasiAI(payload) {
     'Respons HARUS dalam format persis berikut (jangan tambah teks di luar tag):\n\n' +
 
     '[UMUM]\n' +
-    'Tulis 1 paragraf (2-3 kalimat) berisi: total trip, total biaya, dan divisi yang paling aktif melakukan perjalanan dinas.\n\n' +
+    'Tulis 1 paragraf (2-3 kalimat) berisi: total trip, total biaya, dan sebutkan divisi terbanyak berdasarkan data DIVISI DENGAN PERJALANAN TERBANYAK di atas (jangan ubah nama divisinya).\n\n' +
 
     '[PROYEK_JSON]\n' +
     'Dari daftar SEMUA TUJUAN PERJALANAN di atas, pilih maksimal 5 tujuan yang paling ' +
