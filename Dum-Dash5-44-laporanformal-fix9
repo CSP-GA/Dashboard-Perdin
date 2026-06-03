@@ -2326,48 +2326,52 @@ const TAD_DIVISI = new Set([
         });
         const karyawanSorted = Object.entries(karyawanMap).sort(function(a,b){return b[1].trip-a[1].trip;});
 
-        // ── Top 2 proyek ─────────────────────────────────────────────────────
-        let top2Proyek = [];
-        if (narasiCache && narasiCache._parsed && narasiCache._parsed.proyekList && narasiCache._parsed.proyekList.length > 0) {
-            top2Proyek = narasiCache._parsed.proyekList.slice(0,2);
-        } else {
-            const proyekMap = {};
-            filteredData.forEach(function(d){
-                const p=(d.Tujuan||'').trim();
-                if(p && /proyek|project/i.test(p)) proyekMap[p]=(proyekMap[p]||0)+1;
-            });
-            top2Proyek = Object.entries(proyekMap).sort(function(a,b){return b[1]-a[1];})
-                .slice(0,2).map(function(e){return {nama:e[0],trip:e[1]};});
-        }
+        // ── Rekap kota detail: unique users + kegiatan per kota ─────────────
+        const kotaDetailMap = {};
+        filteredData.forEach(function(d) {
+            if (!d.Kota) return;
+            if (!kotaDetailMap[d.Kota]) kotaDetailMap[d.Kota] = { users: new Set(), activities: {} };
+            if (d.Nama) kotaDetailMap[d.Kota].users.add(d.Nama);
+            const act = (d.Tujuan || '').trim();
+            if (act && act !== '-') kotaDetailMap[d.Kota].activities[act] = (kotaDetailMap[d.Kota].activities[act]||0)+1;
+        });
+        const kotaDetailArr = Object.entries(kotaDetailMap)
+            .map(function(e) { return { kota:e[0], orang:e[1].users.size, activities:e[1].activities }; })
+            .sort(function(a,b) { return b.orang - a.orang; });
 
         // ── Narasi 2 paragraf ────────────────────────────────────────────────
         let narasiHtml = '';
+        // Paragraf kota tujuan — selalu dari data langsung, bukan AI
+        let kotaTujuanTxt = '';
+        if (kotaDetailArr.length > 0) {
+            const top3Kota = kotaDetailArr.slice(0, 3);
+            const kotaStr = top3Kota.map(function(k) {
+                const topActs = Object.entries(k.activities)
+                    .sort(function(a,b){return b[1]-a[1];})
+                    .slice(0, 2).map(function(a){return a[0];});
+                const actStr = topActs.length > 0 ? ', kegiatan: <em>'+topActs.join('; ')+'</em>' : '';
+                return '<strong>'+k.kota+'</strong> ('+k.orang+' orang'+actStr+')';
+            });
+            kotaTujuanTxt = 'Kota tujuan terbanyak yang dikunjungi pada periode ini adalah: '+kotaStr.join(', ')+'.';
+        } else {
+            kotaTujuanTxt = 'Tidak ada data kota tujuan pada periode ini.';
+        }
         if (narasiCache && narasiCache._parsed) {
             const parsed = narasiCache._parsed;
-            // Strip kalimat 'Tiga proyek...' yang bolong dari umumTxt
             var rawUmum = parsed.umum || '';
             var cleanUmum = rawUmum
                 .replace(/Tiga proyek dengan perjalanan terbanyak adalah\s*:?[^.]*\.?/gi, '')
-                .replace(/\s{2,}/g, ' ')
-                .trim();
-            const umumTxt = cleanUmum.replace(
-                /(\d[\d,.]*\s*(?:trip|Juta|Miliar|hari|jam|%|kg))/gi,'<strong>$1</strong>');
-            let proyekTxt = '';
-            const proyekList = parsed.proyekList || [];
-            if (proyekList.length > 0) {
-                const proyekNames = proyekList.slice(0,5).map(function(p){
-                    return '<strong>'+p.nama+'</strong> ('+p.trip+' trip)';
-                });
-                proyekTxt = 'Tiga proyek dengan perjalanan terbanyak adalah: '+proyekNames.join(', ')+'. '+
-                    (parsed.sustPara ? parsed.sustPara.replace(/(\d[\d,.]*\s*(?:trip|Juta|Miliar|hari|jam|%|kg\s*CO))/gi,'<strong>$1</strong>') : '');
-            } else {
-                proyekTxt = parsed.sustPara || 'Tidak ada data kegiatan proyek pada periode ini.';
+                .replace(/\s{2,}/g, ' ').trim();
+            const umumTxt = cleanUmum.replace(/(\d[\d,.]*\s*(?:trip|Juta|Miliar|hari|jam|%|kg))/gi,'<strong>$1</strong>');
+            if (parsed.sustPara) {
+                kotaTujuanTxt += ' '+parsed.sustPara.replace(/(\d[\d,.]*\s*(?:trip|Juta|Miliar|hari|jam|%|kg\s*CO))/gi,'<strong>$1</strong>');
             }
             narasiHtml =
                 '<div style="font-size:10.5px;line-height:1.85;color:#334155;margin-bottom:10px;text-align:justify;padding:10px 14px;background:#f8fafc;border-left:3px solid #2563eb;border-radius:0 6px 6px 0;">'+umumTxt+'</div>'+
-                '<div style="font-size:10.5px;line-height:1.85;color:#334155;text-align:justify;padding:10px 14px;background:#f0fdf4;border-left:3px solid #16a34a;border-radius:0 6px 6px 0;">'+proyekTxt+'</div>';
+                '<div style="font-size:10.5px;line-height:1.85;color:#334155;text-align:justify;padding:10px 14px;background:#f0fdf4;border-left:3px solid #16a34a;border-radius:0 6px 6px 0;">'+kotaTujuanTxt+'</div>';
         } else {
-            narasiHtml = '<div style="background:#f8fafc;border-radius:6px;padding:12px 14px;color:#94a3b8;font-size:11px;font-style:italic;">Buka Ringkasan AI di dashboard terlebih dahulu untuk menampilkan narasi.</div>';
+            narasiHtml =
+                '<div style="font-size:10.5px;line-height:1.85;color:#334155;text-align:justify;padding:10px 14px;background:#f0fdf4;border-left:3px solid #16a34a;border-radius:0 6px 6px 0;">'+kotaTujuanTxt+'</div>';
         }
 
         // ── Helpers ──────────────────────────────────────────────────────────
@@ -2540,8 +2544,8 @@ const TAD_DIVISI = new Set([
 
         // ── COVER ──────────────────────────────────────────────────────────
         '<div class="page page-cover" style="align-items:center;justify-content:center;text-align:center;">'+
-            '<img src="'+_logoCoverB64+'" style="height:130px;width:auto;margin-bottom:28px;mix-blend-mode:multiply;" />'+
-            '<div style="font-size:28px;font-weight:900;color:#0f172a;margin-bottom:6px;letter-spacing:0.04em;">LAPORAN PERJALANAN DINAS KARYAWAN PT. PII</div>'+
+            '<img src="'+_logoCoverB64+'" style="height:130px;width:auto;margin-bottom:28px;filter:invert(1) hue-rotate(180deg);" />'+
+            '<div style="font-size:28px;font-weight:900;color:#0f172a;margin-bottom:6px;letter-spacing:0.04em;">LAPORAN PERJALANAN DINAS</div>'+
             '<div style="font-size:25px;font-weight:900;color:#0f172a;line-height:1.15;margin-bottom:14px;">PERIODE '+bulanUpper+'</div>'+
             '<div style="width:50px;height:3px;background:#2563eb;margin:14px auto;border-radius:2px;"></div>'+
             '<div style="font-size:12px;font-weight:700;color:#2563eb;">PT PENJAMINAN INFRASTRUKTUR INDONESIA (PERSERO)</div>'+
