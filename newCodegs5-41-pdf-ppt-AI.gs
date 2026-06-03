@@ -378,13 +378,18 @@ function generateNarasiAI(payload) {
 
     (topKotaStr ?
     '[KOTA_JSON]\n' +
-    'Dari daftar KOTA TUJUAN TERBANYAK di atas, untuk setiap kota, kelompokkan tujuan-tujuan yang ' +
-    'mirip maknanya menjadi satu label kegiatan (contoh: "Rapat Koordinasi IKN", "Site Visit SPAM", ' +
-    '"Monitoring Proyek Tol" → dikelompokkan menjadi "Rapat Koordinasi", "Site Visit", "Monitoring"). ' +
-    'Hitung frekuensi kemunculan per kelompok. Sertakan max 5 kegiatan teratas, sisanya jadi "more".\n' +
-    'Kembalikan HANYA JSON array persis format ini, tidak ada teks lain:\n' +
-    '[{"kota":"nama kota","trip":N,"user":N,"avg":X.X,"kegiatan":[{"label":"...","count":N}],"more":N},...]\n' +
-    'avg = user/trip dibulatkan 1 desimal. Jika tidak ada data kota, kembalikan: []\n'
+    'Dari daftar KOTA TUJUAN TERBANYAK di atas, untuk setiap kota:\n' +
+    '1. Kelompokkan tujuan-tujuan yang mirip maknanya menjadi 1 label pendek (MAKS 4 kata).\n' +
+    '   Contoh: "Rapat Koordinasi Proyek IKN Tol", "rapat koordinasi IKN", "konsinyering IKN" → "Rapat Koordinasi IKN".\n' +
+    '   Contoh: "Pendampingan BPK", "pendampingan BPK site visit", "menemani BPK" → "Pendampingan BPK".\n' +
+    '   Contoh: "SPAM Pekanbaru rapat", "rapat spam pekanbaru", "kunjungan SPAM Pekanbaru" → "SPAM Pekanbaru".\n' +
+    '   Contoh: "Diseminasi Laporan BUPI", "Diseminasi Laporan Triwulanan BUPI dengan PRKN" → "Diseminasi BUPI".\n' +
+    '2. Hitung jumlah tujuan asli yang masuk ke setiap kelompok (count).\n' +
+    '3. Tampilkan max 5 kelompok teratas berdasarkan count, sisanya sebagai "more".\n' +
+    '4. Gunakan trip, user, avg dari data yang diberikan (avg = user/trip, 1 desimal).\n' +
+    'Kembalikan HANYA JSON array format ini, tanpa teks lain:\n' +
+    '[{"kota":"nama kota","trip":N,"user":N,"avg":X.X,"kegiatan":[{"label":"max 4 kata","count":N}],"more":N},...]\n' +
+    'Jika tidak ada data kota, kembalikan: []\n'
     : '');
 
   var options = {
