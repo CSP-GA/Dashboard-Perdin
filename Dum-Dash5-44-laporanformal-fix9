@@ -3074,10 +3074,10 @@ const TAD_DIVISI = new Set([
                 '<div style="font-size:13px;font-weight:800;color:white;text-transform:uppercase;letter-spacing:0.06em;">' + title + '</div>' +
                 '<button onclick="document.getElementById(\'dataDetailModal\').remove()" style="background:none;border:none;color:#94a3b8;font-size:20px;cursor:pointer;padding:0;width:24px;height:24px;">✕</button>' +
             '</div>' +
-            '<div style="flex-grow:1;overflow-y:auto;max-height:500px;padding:16px 20px;">' +
+            '<div style="flex-grow:1;overflow-y:auto;max-height:500px;padding:0 20px 16px 20px;">' +
                 '<table style="width:100%;border-collapse:collapse;font-size:12px;">' +
-                    '<thead style="position:sticky;top:0;background:white;border-bottom:2px solid #e2e8f0;z-index:10;">' +
-                        '<tr>' + columns.map(col => '<th style="padding:8px;text-align:left;font-weight:700;color:#334155;border-bottom:2px solid #2563eb;white-space:nowrap;">' + col + '</th>').join('') + '</tr>' +
+                    '<thead>' +
+                        '<tr>' + columns.map(col => '<th style="padding:12px 8px;text-align:left;font-weight:700;color:#334155;white-space:nowrap;position:sticky;top:0;background:#ffffff;box-shadow:inset 0 -2px 0 #2563eb;z-index:5;">' + col + '</th>').join('') + '</tr>' +
                     '</thead>' +
                     '<tbody>' +
                         data.map((row, i) => {
