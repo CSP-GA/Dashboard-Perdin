@@ -314,6 +314,12 @@ function generateNarasiAI(payload) {
   var modaData  = payload.modaData  || [];
   var topDivisi = payload.topDivisi || [];
   var topKota   = payload.topKota   || [];
+  var purposeClass = payload.purposeClass || {};
+  var avgSLAJam = payload.avgSLAJam || Math.round(avgSLA * 24);
+  var pPeng  = purposeClass.pengembangan || 0;
+  var pAudit = purposeClass.audit        || 0;
+  var pMaint = purposeClass.maintenance  || 0;
+  var pLain  = purposeClass.lainnya      || 0;
 
   // Format data untuk prompt
   var topProyekStr = topProyek.map(function(p, i) {
@@ -340,20 +346,27 @@ function generateNarasiAI(payload) {
   }).join('\n');
 
   var prompt =
-    'Anda adalah asisten pelaporan PT. Penjaminan Infrastruktur Indonesia (PT PII Persero).\n' +
-    'Buat laporan faktual, singkat, tanpa menilai kinerja.\n\n' +
+    'Anda menyusun ringkasan eksekutif perjalanan dinas PT. Penjaminan Infrastruktur Indonesia (PT PII Persero) ' +
+    'untuk pembaca level manajemen. Gaya bahasa: laporan bisnis formal Indonesia yang analitis dan mengalir. ' +
+    'DILARANG KERAS menulis kata "AI", "asisten", "berdasarkan data di atas", "saya", atau menyebut diri Anda. ' +
+    'Tulis seolah analis korporat menulis narasi, bukan menjawab pertanyaan.\n\n' +
 
     'DATA PERIODE ' + periode + ':\n' +
     '- Total perjalanan: ' + n + ' trip\n' +
     '- Total biaya: Rp ' + tBiayaIDR + ' Juta\n' +
     '- Rata-rata durasi: ' + avgDur + ' hari/trip\n' +
-    '- Lead time rata-rata: ' + avgLead + ' hari\n' +
-    '- SLA approve rata-rata: ' + avgSLA + ' jam\n' +
+    '- Lead time pengajuan rata-rata: ' + avgLead + ' hari\n' +
+    '- SLA persetujuan rata-rata: ' + avgSLAJam + ' jam\n' +
     '- Total emisi: ' + tE + ' kg CO2\n\n' +
 
     'DIVISI DENGAN PERJALANAN TERBANYAK:\n' + topDivisiStr + '\n\n' +
 
-    '3 TUJUAN PERJALANAN TERBANYAK:\n' + topProyekStr + '\n\n' +
+    'KLASIFIKASI TUJUAN PERJALANAN (dari kata kunci keterangan tujuan, gunakan ANGKA PERSIS ini):\n' +
+    '- Pengembangan Bisnis (koordinasi, rapat, workshop, investasi, diseminasi, KPBU, site visit): ' + pPeng + ' trip\n' +
+    '- Audit & Pengawasan (audit, BPK, pemeriksaan, asesmen, verifikasi): ' + pAudit + ' trip\n' +
+    '- Pemeliharaan & Operasional (monitoring, standby, operasional, inspeksi): ' + pMaint + ' trip\n' +
+    (pLain ? '- Lainnya: ' + pLain + ' trip\n' : '') + '\n' +
+
     'SEMUA TUJUAN PERJALANAN:\n' + allProyekStr + '\n\n' +
     'DATA MODA TRANSPORTASI:\n' + modaStr + '\n\n' +
     (topKotaStr ? 'KOTA TUJUAN TERBANYAK:\n' + topKotaStr + '\n\n' : '') +
@@ -361,18 +374,24 @@ function generateNarasiAI(payload) {
     'Respons HARUS dalam format persis berikut (jangan tambah teks di luar tag):\n\n' +
 
     '[UMUM]\n' +
-    'Tulis 1 paragraf (2-3 kalimat) berisi: total trip, total biaya, dan sebutkan divisi terbanyak berdasarkan data DIVISI DENGAN PERJALANAN TERBANYAK di atas (jangan ubah nama divisinya).\n\n' +
+    'Tulis 2 paragraf (pisahkan dengan baris kosong), total 6-8 kalimat, mengalir dan berbobot:\n' +
+    'PARAGRAF 1 — Pemetaan Tujuan Strategis: Buka dengan periode, total ' + n + ' trip, dan total biaya Rp ' + tBiayaIDR + ' Juta. ' +
+    'Sebutkan 3 divisi paling aktif beserta jumlah tripnya (pakai nama persis dari DIVISI DENGAN PERJALANAN TERBANYAK). ' +
+    'Berikan interpretasi singkat MENGAPA divisi tersebut paling banyak melakukan perjalanan (kaitkan dengan perannya dalam penjaminan, pengembangan, dan pengawasan proyek infrastruktur). ' +
+    'Lalu petakan komposisi perjalanan ke 3 klasifikasi dengan ANGKA PERSIS: Pengembangan Bisnis (' + pPeng + ' trip), Audit & Pengawasan (' + pAudit + ' trip), dan Pemeliharaan & Operasional (' + pMaint + ' trip). ' +
+    'Tegaskan klasifikasi dominan dan berikan justifikasi bisnisnya.\n' +
+    'PARAGRAF 2 — Efisiensi Operasional: Dalam SATU kalimat yang mengalir, sambungkan rata-rata durasi ' + avgDur + ' hari per perjalanan, lead time pengajuan ' + avgLead + ' hari, dan SLA persetujuan ' + avgSLAJam + ' jam, lalu tutup dengan interpretasi singkat soal kecepatan/efisiensi proses administrasi. Gunakan angka persis.\n\n' +
 
     '[PROYEK_JSON]\n' +
     'Dari daftar SEMUA TUJUAN PERJALANAN di atas, pilih maksimal 5 tujuan yang paling ' +
-    'mencerminkan kegiatan proyek atau koordinasi strategis (rapat koordinasi, site visit, ' +
-    'audiensi, monitoring, capacity building, dll). Urutkan berdasarkan jumlah trip terbanyak.\n' +
+    'mencerminkan kegiatan proyek atau koordinasi strategis. Urutkan berdasarkan jumlah trip terbanyak.\n' +
     'Kembalikan HANYA JSON array, tidak ada teks lain:\n' +
     '[{"nama":"nama tujuan perjalanan lengkap","divisi":"nama divisi","trip":N},...]\n' +
     'Jika tidak ada tujuan relevan, kembalikan: []\n\n' +
 
     '[SUSTAINABILITY]\n' +
-    'Tulis 1 kalimat: total emisi karbon dan rata-rata per trip. ' +
+    'Tulis 1-2 kalimat yang menyebut total emisi karbon ' + tE + ' kg CO2, rata-rata emisi per trip, ' +
+    'dan moda transportasi penyumbang emisi terbesar beserta porsinya. ' +
     'Kemudian langsung JSON array moda transportasi:\n' +
     '[{"nama":"...","kg":N,"pct":N,"times":N},...]\n\n' +
 
